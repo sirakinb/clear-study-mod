@@ -1,0 +1,183 @@
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em var(--primary, #646cff));
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em var(--primary, #61dafb));
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: var(--muted-foreground);
+}
+
+/* Add transition effect to all elements for smooth theme switching */
+*, *::before, *::after {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Button animations */
+@keyframes pulse-button {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-button {
+  animation: pulse-button 2s infinite;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 2s linear;
+}
+
+.animate-spin-hover:hover svg {
+  animation: spin-slow 1.5s ease-in-out;
+}
+
+/* Star button animation */
+@keyframes star-bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+@keyframes star-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px var(--ring, rgba(250, 204, 21, 0.5)));
+  }
+  50% {
+    filter: drop-shadow(0 0 6px var(--ring, rgba(250, 204, 21, 0.8)));
+  }
+}
+
+.favorite-star.active svg {
+  animation: star-bounce 0.4s ease-in-out;
+  filter: drop-shadow(0 0 4px var(--ring, rgba(250, 204, 21, 0.7)));
+}
+
+.favorite-star:hover svg {
+  animation: star-glow 1.5s infinite ease-in-out;
+}
+
+/* Enhanced theme-specific glow effects */
+.glow-effect {
+  transition: all 0.3s ease;
+}
+
+.glow-effect:hover {
+  box-shadow: 0 0 15px var(--primary, rgba(59, 130, 246, 0.7)), 0 0 20px var(--primary, rgba(59, 130, 246, 0.5));
+  transform: translateY(-2px);
+}
+
+/* Pulse animation with theme color */
+@keyframes pulse-theme {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsla(var(--primary), 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px hsla(var(--primary), 0);
+  }
+}
+
+.animate-pulse {
+  animation: pulse-theme 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+/* Enhanced hover effects for buttons with better contrast */
+button:hover, .button:hover {
+  filter: contrast(120%) saturate(120%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Hover glow effects for different theme colors */
+.hover-glow:hover {
+  box-shadow: 0 0 15px hsla(var(--primary), 0.5), 0 0 20px hsla(var(--primary), 0.3);
+  transform: translateY(-2px);
+  filter: contrast(120%) brightness(110%);
+}
+
+.glow-red:hover {
+  box-shadow: 0 0 15px hsla(var(--primary), 0.5), 0 0 20px hsla(var(--primary), 0.3);
+  transform: translateY(-2px);
+  filter: contrast(130%) saturate(120%);
+}
+
+.glow-blue:hover {
+  box-shadow: 0 0 15px hsla(var(--primary), 0.5), 0 0 20px hsla(var(--primary), 0.3);
+  transform: translateY(-2px);
+  filter: contrast(130%) saturate(120%);
+}
+
+.glow-green:hover {
+  box-shadow: 0 0 15px hsla(var(--primary), 0.5), 0 0 20px hsla(var(--primary), 0.3);
+  transform: translateY(-2px);
+  filter: contrast(130%) saturate(120%);
+}
+
+.glow-primary:hover {
+  box-shadow: 0 0 15px hsla(var(--primary), 0.5), 0 0 20px hsla(var(--primary), 0.3);
+  transform: translateY(-2px);
+  filter: contrast(130%) saturate(120%);
+}
+
+/* Dark mode specific styles */
+.dark .bg-card {
+  @apply backdrop-blur-sm bg-slate-900/90 border-slate-800;
+}
+
+.dark .text-muted-foreground {
+  @apply text-slate-400;
+}
+
+/* Glass morphism effect for themed components */
+.glass {
+  @apply backdrop-blur-sm bg-background/5 border border-border/20 shadow-md;
+}

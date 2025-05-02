@@ -1,0 +1,56 @@
+export const transcribeAudioWithSDK = async (
+  blob: Blob,
+  apiKey: string
+): Promise<{ text: string; id: string }> => {
+  try {
+    console.log(`Transcribing audio blob of size ${blob.size} bytes and type ${blob.type}`);
+    
+    // Make sure the blob is a valid audio file and has sufficient size
+    if (!blob.type.startsWith('audio/') || blob.size < 1000) {
+      throw new Error('Invalid audio blob: Too small or not an audio type');
+    }
+    
+    // Initialize AssemblyAI client
+    const client = new AssemblyAI({ apiKey });
+    
+    // Determine correct file extension and mime type based on the actual blob type
+    let fileName = 'recording.mp3';
+    let fileType = blob.type;
+    
+    if (blob.type.includes('webm')) {
+      fileName = 'recording.webm';
+      fileType = 'audio/webm';
+      console.log('Using WebM format for AssemblyAI transcription');
+    } else if (blob.type.includes('wav')) {
+      fileName = 'recording.wav';
+      fileType = 'audio/wav';
+      console.log('Using WAV format for AssemblyAI transcription');
+    } else {
+      // Default to MP3
+      fileName = 'recording.mp3';
+      fileType = 'audio/mp3';
+      console.log('Using MP3 format for AssemblyAI transcription');
+    }
+    
+    // Create a new blob with the correct type to ensure content-type header is correct
+    const typedBlob = new Blob([await blob.arrayBuffer()], { type: fileType });
+    
+    // Convert the blob to a File object that the SDK can handle
+    const file = new File([typedBlob], fileName, { type: fileType });
+    
+    console.log('Starting transcription with AssemblyAI SDK...');
+    const transcript = await client.transcripts.transcribe({ audio: file });
+    
+    console.log('Transcription completed successfully!');
+    console.log(`Transcript ID: ${transcript.id}`);
+    console.log(`Text length: ${transcript.text.length} characters`);
+    
+    return {
+      text: transcript.text,
+      id: transcript.id
+    };
+  } catch (error) {
+    console.error('Error transcribing with AssemblyAI SDK:', error);
+    throw error;
+  }
+}; 
