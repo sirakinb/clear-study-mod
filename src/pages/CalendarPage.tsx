@@ -83,7 +83,7 @@ const CalendarPage = () => {
     return format(new Date().setHours(i + 8, 0, 0, 0), 'h:mm a');
   });
 
-  const getTaskPosition = (task: typeof tasks[0], date: Date) => {
+  const getTaskPosition = (task: typeof tasks[0], date: Date, index: number, totalTasks: number) => {
     if (task.taskType === 'multi-day' && task.pomodoroSessions && task.pomodoroSessions.length > 0) {
       const sessionsForDay = task.pomodoroSessions.filter(session => 
         isSameDay(session.startTime, date)
@@ -100,29 +100,53 @@ const CalendarPage = () => {
         const durationMinutes = durationMs / (1000 * 60);
         const height = (durationMinutes / 60) * 4;
         
+        // Calculate width and left position for multiple tasks
+        const width = `calc(${100 / totalTasks}% - 0.5rem)`;
+        const left = `calc(${(index * 100) / totalTasks}% + 0.25rem)`;
+        
         return {
           top: `${topPosition}rem`,
           height: `${height}rem`,
+          width,
+          left
         };
       }
     }
     
     if (task.startDate && task.dueDate) {
       if (isSameDay(task.startDate, date)) {
+        // Calculate width and left position for multiple tasks
+        const width = `calc(${100 / totalTasks}% - 0.5rem)`;
+        const left = `calc(${(index * 100) / totalTasks}% + 0.25rem)`;
+        
         return {
           top: '8rem',
           height: '4rem',
+          width,
+          left
         };
       }
       if (isSameDay(task.dueDate, date)) {
+        // Calculate width and left position for multiple tasks
+        const width = `calc(${100 / totalTasks}% - 0.5rem)`;
+        const left = `calc(${(index * 100) / totalTasks}% + 0.25rem)`;
+        
         return {
           top: '12rem',
           height: '5rem',
+          width,
+          left
         };
       }
+      // Calculate width and left position for multiple tasks
+      const width = `calc(${100 / totalTasks}% - 0.5rem)`;
+      const left = `calc(${(index * 100) / totalTasks}% + 0.25rem)`;
+      
       return {
         top: '10rem',
         height: '3rem',
+        width,
+        left
       };
     }
     
@@ -134,15 +158,27 @@ const CalendarPage = () => {
       
       const height = (task.duration / 60) * 4;
       
+      // Calculate width and left position for multiple tasks
+      const width = `calc(${100 / totalTasks}% - 0.5rem)`;
+      const left = `calc(${(index * 100) / totalTasks}% + 0.25rem)`;
+      
       return {
         top: `${topPosition}rem`,
         height: `${height}rem`,
+        width,
+        left
       };
     }
+    
+    // Calculate width and left position for multiple tasks
+    const width = `calc(${100 / totalTasks}% - 0.5rem)`;
+    const left = `calc(${(index * 100) / totalTasks}% + 0.25rem)`;
     
     return {
       top: '9rem',
       height: '3rem',
+      width,
+      left
     };
   };
 
@@ -311,38 +347,57 @@ const CalendarPage = () => {
                               </div>
                             )}
                             
-                            {getTasksForDate(selectedDate).map(task => (
-                              <div 
-                                key={task.id}
-                                className={`absolute rounded-md p-1 border-l-4 mx-1 overflow-hidden shadow-sm ${getUrgencyColor(task.urgency)} ${task.completed ? 'opacity-60' : ''}`}
-                                style={{
-                                  ...getTaskPosition(task, selectedDate),
-                                  maxHeight: '4rem',
-                                  width: 'calc(100% - 0.5rem)'
-                                }}
-                              >
-                                <div className="flex flex-col h-full overflow-hidden relative">
-                                  {getTaskStatusIndicator(task)}
-                                  <h3 className={`font-medium text-xs truncate ${task.completed ? 'line-through' : ''}`}>
-                                    {task.name}
-                                  </h3>
-                                  
-                                  <div className="flex items-center gap-1 text-xs mt-0.5">
-                                    {task.taskType === 'multi-day' && task.pomodoroSessions ? (
-                                      <span className="flex items-center">
-                                        <Clock className="h-2.5 w-2.5 mr-0.5" />
-                                        {getPomodoroSessionText(task, selectedDate) || `${task.duration} min`}
-                                      </span>
-                                    ) : (
-                                      <span className="flex items-center">
-                                        <Clock className="h-2.5 w-2.5 mr-0.5" />
-                                        {task.duration} min
-                                      </span>
-                                    )}
+                            {getTasksForDate(selectedDate).map((task, index, array) => {
+                              // Group tasks by their time slot
+                              const tasksAtSameTime = array.filter(t => {
+                                if (task.taskType === 'multi-day' && task.pomodoroSessions && t.taskType === 'multi-day' && t.pomodoroSessions) {
+                                  const taskSession = task.pomodoroSessions.find(s => isSameDay(s.startTime, selectedDate));
+                                  const otherSession = t.pomodoroSessions.find(s => isSameDay(s.startTime, selectedDate));
+                                  return taskSession && otherSession && 
+                                         taskSession.startTime.getTime() === otherSession.startTime.getTime();
+                                }
+                                if (task.dueDate && t.dueDate) {
+                                  return task.dueDate.getTime() === t.dueDate.getTime();
+                                }
+                                return false;
+                              });
+                              
+                              // Only render if this is the first task in its time slot
+                              if (tasksAtSameTime[0] === task) {
+                                return tasksAtSameTime.map((t, i) => (
+                                  <div 
+                                    key={t.id}
+                                    className={`absolute rounded-md p-1 border-l-4 mx-1 overflow-hidden shadow-sm ${getUrgencyColor(t.urgency)} ${t.completed ? 'opacity-60' : ''}`}
+                                    style={{
+                                      ...getTaskPosition(t, selectedDate, i, tasksAtSameTime.length),
+                                      maxHeight: '4rem'
+                                    }}
+                                  >
+                                    <div className="flex flex-col h-full overflow-hidden relative">
+                                      {getTaskStatusIndicator(t)}
+                                      <h3 className={`font-medium text-xs truncate ${t.completed ? 'line-through' : ''}`}>
+                                        {t.name}
+                                      </h3>
+                                      
+                                      <div className="flex items-center gap-1 text-xs mt-0.5">
+                                        {t.taskType === 'multi-day' && t.pomodoroSessions ? (
+                                          <span className="flex items-center">
+                                            <Clock className="h-2.5 w-2.5 mr-0.5" />
+                                            {getPomodoroSessionText(t, selectedDate) || `${t.duration} min`}
+                                          </span>
+                                        ) : (
+                                          <span className="flex items-center">
+                                            <Clock className="h-2.5 w-2.5 mr-0.5" />
+                                            {t.duration} min
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              </div>
-                            ))}
+                                ));
+                              }
+                              return null;
+                            })}
                           </div>
                         </div>
                       </div>

@@ -41,7 +41,7 @@ const TaskDialog = ({ open, onOpenChange, onAutoSchedule }: TaskDialogProps) => 
   const [hour, setHour] = useState<string>("12");
   const [minute, setMinute] = useState<string>("00");
   const [ampm, setAmPm] = useState<string>("PM");
-  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('medium');
+  const [difficulty, setDifficulty] = useState<'easy' | 'hard'>('easy');
   const [duration, setDuration] = useState<number>(60);
   const [taskType, setTaskType] = useState<TaskType>('one-time');
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
@@ -149,70 +149,57 @@ const TaskDialog = ({ open, onOpenChange, onAutoSchedule }: TaskDialogProps) => 
 
   const handleTimeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setTimeInput(value);
+    const input = e.target;
+    const cursorPosition = input.selectionStart || 0;
     
-    const cleanValue = value.replace(/[^0-9:aApPmM\s]/g, '');
-    
-    const twelveHourRegex = /^(\d{1,2})(?::(\d{1,2}))?(?:\s*)([aApP][mM])?$/;
-    const match = cleanValue.match(twelveHourRegex);
-    
-    if (match) {
-      const parsedHour = parseInt(match[1]);
-      let parsedMinute = match[2] ? parseInt(match[2]) : 0;
-      let parsedAmPm = match[3]?.toLowerCase() === 'pm' ? 'PM' : 'AM';
-      
-      if (!match[3]) {
-        parsedAmPm = ampm;
-      }
-      
-      if (parsedHour > 12) {
-        setHour("12");
-      } else if (parsedHour === 0) {
-        setHour("12");
-        parsedAmPm = 'AM';
-      } else {
-        setHour(parsedHour.toString());
-      }
-      
-      if (parsedMinute > 59) {
-        setMinute("59");
-      } else {
-        setMinute(parsedMinute.toString().padStart(2, '0'));
-      }
-      
-      setAmPm(parsedAmPm);
-      
-      const formattedTime = `${parsedHour}:${parsedMinute.toString().padStart(2, '0')} ${parsedAmPm}`;
-      setTimeInput(formattedTime);
+    // Handle backspace
+    if (e.nativeEvent instanceof InputEvent && e.nativeEvent.inputType === 'deleteContentBackward') {
+      setTimeInput(value);
+      return;
     }
     
-    const twentyFourHourRegex = /^(\d{1,2})(?::(\d{1,2}))?$/;
-    const match24 = cleanValue.match(twentyFourHourRegex);
+    // Handle hour input
+    if (cursorPosition <= 2) {
+      const hourValue = value.replace(/[^0-9]/g, '');
+      if (hourValue.length <= 2) {
+        setHour(hourValue);
+        setTimeInput(hourValue);
+        if (hourValue.length === 2) {
+          // Move cursor after hour
+          setTimeout(() => {
+            input.setSelectionRange(2, 2);
+          }, 0);
+        }
+      }
+      return;
+    }
     
-    if (match24 && !match) {
-      const parsedHour = parseInt(match24[1]);
-      let parsedMinute = match24[2] ? parseInt(match24[2]) : 0;
-      
-      if (parsedHour >= 0 && parsedHour <= 23) {
-        if (parsedHour === 0) {
-          setHour("12");
-          setAmPm("AM");
-        } else if (parsedHour === 12) {
-          setHour("12");
-          setAmPm("PM");
-        } else if (parsedHour > 12) {
-          setHour((parsedHour - 12).toString());
-          setAmPm("PM");
-        } else {
-          setHour(parsedHour.toString());
-          setAmPm("AM");
+    // Handle minute input
+    if (cursorPosition <= 5) {
+      const minuteValue = value.replace(/[^0-9]/g, '');
+      if (minuteValue.length <= 2) {
+        setMinute(minuteValue);
+        setTimeInput(`${hour}:${minuteValue}`);
+        if (minuteValue.length === 2) {
+          // Move cursor after minutes
+          setTimeout(() => {
+            input.setSelectionRange(5, 5);
+          }, 0);
         }
-        
-        if (parsedMinute > 59) {
-          setMinute("59");
-        } else {
-          setMinute(parsedMinute.toString().padStart(2, '0'));
-        }
+      }
+      return;
+    }
+    
+    // Handle AM/PM input
+    if (cursorPosition > 5) {
+      const ampmValue = value.slice(-2).toUpperCase();
+      if (ampmValue === 'AM' || ampmValue === 'PM') {
+        setAmPm(ampmValue);
+        setTimeInput(`${hour}:${minute} ${ampmValue}`);
+        // Move cursor to end
+        setTimeout(() => {
+          input.setSelectionRange(value.length, value.length);
+        }, 0);
       }
     }
   };
@@ -226,7 +213,10 @@ const TaskDialog = ({ open, onOpenChange, onAutoSchedule }: TaskDialogProps) => 
       return;
     }
     
-    const formattedTime = `${hour}:${minute.padStart(2, '0')} ${ampm}`;
+    // Format the time input
+    const formattedHour = hour.padStart(2, '0');
+    const formattedMinute = minute.padStart(2, '0');
+    const formattedTime = `${formattedHour}:${formattedMinute} ${ampm}`;
     setTimeInput(formattedTime);
   };
 
@@ -252,9 +242,9 @@ const TaskDialog = ({ open, onOpenChange, onAutoSchedule }: TaskDialogProps) => 
 
     addTask({
       name: taskName,
-      description,
+      description: taskType === 'multi-day' ? description : '',
       dueDate: dueDateTime,
-      difficulty,
+      difficulty: taskType === 'multi-day' ? difficulty : 'medium',
       duration,
       taskType,
     });
@@ -280,7 +270,7 @@ const TaskDialog = ({ open, onOpenChange, onAutoSchedule }: TaskDialogProps) => 
     setHour("12");
     setMinute("00");
     setAmPm("PM");
-    setDifficulty('medium');
+    setDifficulty('easy');
     setDuration(60);
     setTaskType('one-time');
     onOpenChange(false);
@@ -343,18 +333,21 @@ const TaskDialog = ({ open, onOpenChange, onAutoSchedule }: TaskDialogProps) => 
                 placeholder="Enter task name"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="col-span-3"
-                placeholder="Add details about this task"
-              />
-            </div>
+            
+            {taskType === 'multi-day' && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Add details about this task"
+                />
+              </div>
+            )}
             
             <div className="grid grid-cols-4 items-start gap-4">
               <Label className="text-right pt-2">Task Type</Label>
@@ -485,148 +478,110 @@ const TaskDialog = ({ open, onOpenChange, onAutoSchedule }: TaskDialogProps) => 
                     Enter time in 12-hour (1:30 PM) or 24-hour (13:30) format
                   </p>
                 </div>
-                
-                <div className="hidden">
-                  <Select value={hour} onValueChange={setHour}>
-                    <SelectTrigger className="w-[70px]">
-                      <SelectValue placeholder="Hour" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {hours.map((h) => (
-                        <SelectItem key={h} value={h}>
-                          {h}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <span className="mx-1">:</span>
-
-                  <Select value={minute} onValueChange={setMinute}>
-                    <SelectTrigger className="w-[70px]">
-                      <SelectValue placeholder="Min" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[200px] overflow-y-auto">
-                      {minutes.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="hidden">
-                  <Select value={ampm} onValueChange={setAmPm}>
-                    <SelectTrigger className="w-[70px]">
-                      <SelectValue placeholder="AM/PM" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AM">AM</SelectItem>
-                      <SelectItem value="PM">PM</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-4 items-start gap-4">
-              <div className="text-right flex items-center justify-end gap-1">
-                <Label className="pt-2">Priority</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Higher priority tasks will be scheduled earlier in the day when possible</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <RadioGroup
-                value={priority}
-                onValueChange={(value: 'high' | 'medium' | 'low') => setPriority(value)}
-                className="col-span-3 flex space-x-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="high" id="priority-high" />
-                  <Label htmlFor="priority-high" className="cursor-pointer">High</Label>
+            {taskType === 'multi-day' && (
+              <>
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <div className="text-right flex items-center justify-end gap-1">
+                    <Label className="pt-2">Priority</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Higher priority tasks will be scheduled earlier in the day when possible</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <RadioGroup
+                    value={priority}
+                    onValueChange={(value: 'high' | 'medium' | 'low') => setPriority(value)}
+                    className="col-span-3 flex space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="high" id="priority-high" />
+                      <Label htmlFor="priority-high" className="cursor-pointer">High</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="medium" id="priority-medium" />
+                      <Label htmlFor="priority-medium" className="cursor-pointer">Medium</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="low" id="priority-low" />
+                      <Label htmlFor="priority-low" className="cursor-pointer">Low</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="medium" id="priority-medium" />
-                  <Label htmlFor="priority-medium" className="cursor-pointer">Medium</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="low" id="priority-low" />
-                  <Label htmlFor="priority-low" className="cursor-pointer">Low</Label>
-                </div>
-              </RadioGroup>
-            </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <div className="text-right flex items-center justify-end gap-1">
-                <Label>Preferred Time</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Optional preferred time window for this task</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <div className="col-span-3 flex gap-2">
-                <div className="flex-1">
-                  <Input
-                    value={preferredTimeWindow.start || ''}
-                    onChange={(e) => setPreferredTimeWindow(prev => ({ ...prev, start: e.target.value }))}
-                    placeholder="Start time (e.g., 9:00 AM)"
-                    className="w-full"
-                  />
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="text-right flex items-center justify-end gap-1">
+                    <Label>Preferred Time</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Optional preferred time window for this task</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <div className="col-span-3 flex gap-2">
+                    <div className="flex-1">
+                      <Input
+                        value={preferredTimeWindow.start || ''}
+                        onChange={(e) => setPreferredTimeWindow(prev => ({ ...prev, start: e.target.value }))}
+                        placeholder="Start time (e.g., 9:00 AM)"
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        value={preferredTimeWindow.end || ''}
+                        onChange={(e) => setPreferredTimeWindow(prev => ({ ...prev, end: e.target.value }))}
+                        placeholder="End time (e.g., 11:00 AM)"
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <Input
-                    value={preferredTimeWindow.end || ''}
-                    onChange={(e) => setPreferredTimeWindow(prev => ({ ...prev, end: e.target.value }))}
-                    placeholder="End time (e.g., 11:00 AM)"
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-4 items-start gap-4">
-              <div className="text-right flex items-center justify-end gap-1">
-                <Label className="pt-2">Difficulty</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HardHat className="h-4 w-4 text-yellow-500" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Tasks will be alternated between easy and hard to maintain energy levels</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <RadioGroup
-                value={difficulty}
-                onValueChange={(value: 'easy' | 'hard') => setDifficulty(value)}
-                className="col-span-3 flex space-x-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="easy" id="difficulty-easy" />
-                  <Label htmlFor="difficulty-easy" className="cursor-pointer">Easy</Label>
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <div className="text-right flex items-center justify-end gap-1">
+                    <Label className="pt-2">Difficulty</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HardHat className="h-4 w-4 text-yellow-500" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Tasks will be alternated between easy and hard to maintain energy levels</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <RadioGroup
+                    value={difficulty}
+                    onValueChange={(value: 'easy' | 'hard') => setDifficulty(value)}
+                    className="col-span-3 flex space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="easy" id="difficulty-easy" />
+                      <Label htmlFor="difficulty-easy" className="cursor-pointer">Easy</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="hard" id="difficulty-hard" />
+                      <Label htmlFor="difficulty-hard" className="cursor-pointer">Hard</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="hard" id="difficulty-hard" />
-                  <Label htmlFor="difficulty-hard" className="cursor-pointer">Hard</Label>
-                </div>
-              </RadioGroup>
-            </div>
+              </>
+            )}
 
             <div className="grid grid-cols-4 items-center gap-4">
               <div className="text-right flex items-center justify-end gap-1">
@@ -664,7 +619,6 @@ const TaskDialog = ({ open, onOpenChange, onAutoSchedule }: TaskDialogProps) => 
                 )}
               </div>
             </div>
-
           </div>
           <DialogFooter>
             <Button type="submit" className="hover-glow glow-primary">Schedule Task</Button>

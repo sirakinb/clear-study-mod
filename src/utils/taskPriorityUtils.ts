@@ -257,83 +257,192 @@ export const schedulePomodoroSessions = (
     const pomodorosNeeded = calculatePomodorosNeeded(task);
     let pomodorosScheduled = 0;
 
-    while (pomodorosScheduled < pomodorosNeeded) {
-      // Check if we need to move to next day
-      if (pomodorosToday >= MAX_POMODOROS_PER_DAY) {
-        currentDate = addDays(currentDate, 1);
-        currentTime = startOfDay(currentDate);
-        pomodorosToday = 0;
-        sequentialPomodoros = 0;
-      }
-
-      // Find next available time slot that's not occupied
-      while (
-        isTimeSlotUnavailable(currentTime, unavailableTimes) ||
-        isTimeSlotOccupied(currentTime, POMODORO_LENGTH, sessions)
-      ) {
-        currentTime = addMinutes(currentTime, 30); // Try next 30-minute slot
-        if (format(currentTime, 'HH:mm') === '00:00') {
-          // If we've reached midnight, move to next day
+    // If task has a due date, ensure we start scheduling early enough
+    if (task.dueDate) {
+      const daysUntilDue = differenceInDays(task.dueDate, currentDate);
+      const pomodorosPerDay = Math.ceil(pomodorosNeeded / Math.max(1, daysUntilDue));
+      
+      // Start scheduling from the earliest possible date
+      while (pomodorosScheduled < pomodorosNeeded) {
+        // Check if we need to move to next day
+        if (pomodorosToday >= MAX_POMODOROS_PER_DAY) {
           currentDate = addDays(currentDate, 1);
           currentTime = startOfDay(currentDate);
           pomodorosToday = 0;
           sequentialPomodoros = 0;
         }
-      }
 
-      // Schedule a pomodoro session
-      const session: PomodoroSession = {
-        id: crypto.randomUUID(),
-        taskId: task.id,
-        taskName: task.name,
-        startTime: currentTime,
-        endTime: addMinutes(currentTime, POMODORO_LENGTH),
-        completed: false,
-        sessionNumber: pomodorosScheduled + 1,
-        totalSessions: pomodorosNeeded
-      };
-      sessions.push(session);
-      pomodorosScheduled++;
-      pomodorosToday++;
-      sequentialPomodoros++;
-
-      // Move to next time slot
-      currentTime = session.endTime;
-
-      // Add appropriate break
-      if (pomodorosScheduled < pomodorosNeeded) { // Only add break if not the last pomodoro
-        if (sequentialPomodoros === POMODOROS_BEFORE_LONG_BREAK) {
-          // Add long break if we've completed 4 pomodoros
-          if (!isTimeSlotUnavailable(currentTime, unavailableTimes) && 
-              !isTimeSlotOccupied(currentTime, LONG_BREAK_LENGTH, sessions)) {
-            sessions.push({
-              id: crypto.randomUUID(),
-              taskId: task.id,
-              taskName: `${task.name} - Long Break`,
-              startTime: currentTime,
-              endTime: addMinutes(currentTime, LONG_BREAK_LENGTH),
-              completed: false,
-              sessionNumber: 0,
-              totalSessions: 0
-            });
-            currentTime = addMinutes(currentTime, LONG_BREAK_LENGTH);
+        // If we've passed the due date, schedule remaining pomodoros as soon as possible
+        if (isAfter(currentDate, task.dueDate)) {
+          // Find next available time slot
+          while (
+            isTimeSlotUnavailable(currentTime, unavailableTimes) ||
+            isTimeSlotOccupied(currentTime, POMODORO_LENGTH, sessions)
+          ) {
+            currentTime = addMinutes(currentTime, 30);
+            if (format(currentTime, 'HH:mm') === '00:00') {
+              currentDate = addDays(currentDate, 1);
+              currentTime = startOfDay(currentDate);
+              pomodorosToday = 0;
+              sequentialPomodoros = 0;
+            }
           }
-          sequentialPomodoros = 0;
         } else {
-          // Add short break
-          if (!isTimeSlotUnavailable(currentTime, unavailableTimes) && 
-              !isTimeSlotOccupied(currentTime, BREAK_LENGTH, sessions)) {
-            sessions.push({
-              id: crypto.randomUUID(),
-              taskId: task.id,
-              taskName: `${task.name} - Short Break`,
-              startTime: currentTime,
-              endTime: addMinutes(currentTime, BREAK_LENGTH),
-              completed: false,
-              sessionNumber: 0,
-              totalSessions: 0
-            });
-            currentTime = addMinutes(currentTime, BREAK_LENGTH);
+          // Try to distribute pomodoros evenly before due date
+          const targetPomodorosToday = Math.min(
+            pomodorosPerDay,
+            pomodorosNeeded - pomodorosScheduled
+          );
+
+          // Find available time slots for today
+          while (pomodorosToday < targetPomodorosToday) {
+            // Find next available time slot
+            while (
+              isTimeSlotUnavailable(currentTime, unavailableTimes) ||
+              isTimeSlotOccupied(currentTime, POMODORO_LENGTH, sessions)
+            ) {
+              currentTime = addMinutes(currentTime, 30);
+              if (format(currentTime, 'HH:mm') === '00:00') {
+                break; // Move to next day if we can't find a slot
+              }
+            }
+
+            // If we found an available slot, schedule the pomodoro
+            if (!isTimeSlotUnavailable(currentTime, unavailableTimes) &&
+                !isTimeSlotOccupied(currentTime, POMODORO_LENGTH, sessions)) {
+              const session: PomodoroSession = {
+                id: crypto.randomUUID(),
+                taskId: task.id,
+                taskName: task.name,
+                startTime: currentTime,
+                endTime: addMinutes(currentTime, POMODORO_LENGTH),
+                completed: false,
+                sessionNumber: pomodorosScheduled + 1,
+                totalSessions: pomodorosNeeded
+              };
+              sessions.push(session);
+              pomodorosScheduled++;
+              pomodorosToday++;
+              sequentialPomodoros++;
+
+              // Move to next time slot
+              currentTime = session.endTime;
+
+              // Add appropriate break
+              if (pomodorosScheduled < pomodorosNeeded) {
+                if (sequentialPomodoros === POMODOROS_BEFORE_LONG_BREAK) {
+                  if (!isTimeSlotUnavailable(currentTime, unavailableTimes) && 
+                      !isTimeSlotOccupied(currentTime, LONG_BREAK_LENGTH, sessions)) {
+                    sessions.push({
+                      id: crypto.randomUUID(),
+                      taskId: task.id,
+                      taskName: `${task.name} - Long Break`,
+                      startTime: currentTime,
+                      endTime: addMinutes(currentTime, LONG_BREAK_LENGTH),
+                      completed: false,
+                      sessionNumber: 0,
+                      totalSessions: 0
+                    });
+                    currentTime = addMinutes(currentTime, LONG_BREAK_LENGTH);
+                  }
+                  sequentialPomodoros = 0;
+                } else {
+                  if (!isTimeSlotUnavailable(currentTime, unavailableTimes) && 
+                      !isTimeSlotOccupied(currentTime, BREAK_LENGTH, sessions)) {
+                    sessions.push({
+                      id: crypto.randomUUID(),
+                      taskId: task.id,
+                      taskName: `${task.name} - Short Break`,
+                      startTime: currentTime,
+                      endTime: addMinutes(currentTime, BREAK_LENGTH),
+                      completed: false,
+                      sessionNumber: 0,
+                      totalSessions: 0
+                    });
+                    currentTime = addMinutes(currentTime, BREAK_LENGTH);
+                  }
+                }
+              }
+            } else {
+              // If we couldn't find a slot today, move to next day
+              currentDate = addDays(currentDate, 1);
+              currentTime = startOfDay(currentDate);
+              pomodorosToday = 0;
+              sequentialPomodoros = 0;
+              break;
+            }
+          }
+        }
+      }
+    } else {
+      // For tasks without due dates, schedule them as soon as possible
+      while (pomodorosScheduled < pomodorosNeeded) {
+        // Find next available time slot
+        while (
+          isTimeSlotUnavailable(currentTime, unavailableTimes) ||
+          isTimeSlotOccupied(currentTime, POMODORO_LENGTH, sessions)
+        ) {
+          currentTime = addMinutes(currentTime, 30);
+          if (format(currentTime, 'HH:mm') === '00:00') {
+            currentDate = addDays(currentDate, 1);
+            currentTime = startOfDay(currentDate);
+            pomodorosToday = 0;
+            sequentialPomodoros = 0;
+          }
+        }
+
+        // Schedule the pomodoro session
+        const session: PomodoroSession = {
+          id: crypto.randomUUID(),
+          taskId: task.id,
+          taskName: task.name,
+          startTime: currentTime,
+          endTime: addMinutes(currentTime, POMODORO_LENGTH),
+          completed: false,
+          sessionNumber: pomodorosScheduled + 1,
+          totalSessions: pomodorosNeeded
+        };
+        sessions.push(session);
+        pomodorosScheduled++;
+        pomodorosToday++;
+        sequentialPomodoros++;
+
+        // Move to next time slot
+        currentTime = session.endTime;
+
+        // Add appropriate break
+        if (pomodorosScheduled < pomodorosNeeded) {
+          if (sequentialPomodoros === POMODOROS_BEFORE_LONG_BREAK) {
+            if (!isTimeSlotUnavailable(currentTime, unavailableTimes) && 
+                !isTimeSlotOccupied(currentTime, LONG_BREAK_LENGTH, sessions)) {
+              sessions.push({
+                id: crypto.randomUUID(),
+                taskId: task.id,
+                taskName: `${task.name} - Long Break`,
+                startTime: currentTime,
+                endTime: addMinutes(currentTime, LONG_BREAK_LENGTH),
+                completed: false,
+                sessionNumber: 0,
+                totalSessions: 0
+              });
+              currentTime = addMinutes(currentTime, LONG_BREAK_LENGTH);
+            }
+            sequentialPomodoros = 0;
+          } else {
+            if (!isTimeSlotUnavailable(currentTime, unavailableTimes) && 
+                !isTimeSlotOccupied(currentTime, BREAK_LENGTH, sessions)) {
+              sessions.push({
+                id: crypto.randomUUID(),
+                taskId: task.id,
+                taskName: `${task.name} - Short Break`,
+                startTime: currentTime,
+                endTime: addMinutes(currentTime, BREAK_LENGTH),
+                completed: false,
+                sessionNumber: 0,
+                totalSessions: 0
+              });
+              currentTime = addMinutes(currentTime, BREAK_LENGTH);
+            }
           }
         }
       }
