@@ -223,8 +223,8 @@ const NotesPage = () => {
       <div className="flex-1">
         <div className="container mx-auto py-6">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold">Your Notes</h1>
-            <p className="text-muted-foreground">View and manage your notes from recordings</p>
+            <h1 className="text-3xl font-bold">My Notes</h1>
+            <p className="text-muted-foreground">View and manage my notes from recordings</p>
           </div>
 
           <Tabs defaultValue="all" onValueChange={setActiveTab} value={activeTab}>
