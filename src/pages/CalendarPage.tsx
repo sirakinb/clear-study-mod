@@ -281,15 +281,17 @@ const CalendarPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 h-[calc(100vh-120px)] overflow-hidden">
-              <Card className="md:col-span-1 overflow-auto">
-                <CardContent className="p-2">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
-                    className="rounded-md border"
-                  />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 h-[calc(100vh-120px)] overflow-hidden items-start">
+              <Card className="md:col-span-1 w-full max-w-xs md:max-w-sm lg:max-w-md mx-auto min-h-[500px]">
+                <CardContent className="p-4 w-full h-full flex justify-center items-center">
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => date && setSelectedDate(date)}
+                      className="w-full h-full"
+                    />
+                  </div>
                 </CardContent>
               </Card>
 
@@ -368,32 +370,32 @@ const CalendarPage = () => {
                                   <div 
                                     key={t.id}
                                     className={`absolute rounded-md p-1 border-l-4 mx-1 overflow-hidden shadow-sm ${getUrgencyColor(t.urgency)} ${t.completed ? 'opacity-60' : ''}`}
-                                    style={{
+                                style={{
                                       ...getTaskPosition(t, selectedDate, i, tasksAtSameTime.length),
                                       maxHeight: '4rem'
-                                    }}
-                                  >
-                                    <div className="flex flex-col h-full overflow-hidden relative">
+                                }}
+                              >
+                                <div className="flex flex-col h-full overflow-hidden relative">
                                       {getTaskStatusIndicator(t)}
                                       <h3 className={`font-medium text-xs truncate ${t.completed ? 'line-through' : ''}`}>
                                         {t.name}
-                                      </h3>
-                                      
-                                      <div className="flex items-center gap-1 text-xs mt-0.5">
+                                  </h3>
+                                  
+                                  <div className="flex items-center gap-1 text-xs mt-0.5">
                                         {t.taskType === 'multi-day' && t.pomodoroSessions ? (
-                                          <span className="flex items-center">
-                                            <Clock className="h-2.5 w-2.5 mr-0.5" />
+                                      <span className="flex items-center">
+                                        <Clock className="h-2.5 w-2.5 mr-0.5" />
                                             {getPomodoroSessionText(t, selectedDate) || `${t.duration} min`}
-                                          </span>
-                                        ) : (
-                                          <span className="flex items-center">
-                                            <Clock className="h-2.5 w-2.5 mr-0.5" />
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center">
+                                        <Clock className="h-2.5 w-2.5 mr-0.5" />
                                             {t.duration} min
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
+                                      </span>
+                                    )}
                                   </div>
+                                </div>
+                              </div>
                                 ));
                               }
                               return null;
